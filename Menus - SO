@@ -1,0 +1,208 @@
+Menú
+Los menú se encuentran en /home
+Los respectivos son 4: 
+menu.sh - Contiene los siguentes 3 menú
+#!/bin/bash
+echo 'Menu de Enlace'
+echo '----------------------'
+echo '1- Menú de Instalación'
+echo '2- Menú de Usuarios'
+echo '3- Menú de Logs'
+echo '4- Salir'
+echo '----------------------'
+echo '¿Qué desea realizar?'
+read res
+echo "$res"
+
+case $res in
+"1") #Script de instalación
+        bash /homemenu2.sh
+        ;;
+"2") #Script de creacion de usuarios
+        bash /homemenu3.sh
+        ;;
+"3") #Script de logs
+        bash /homemenu4.sh
+        ;;
+"4") echo 'Saliendo'
+        exit
+        ;;
+esac
+
+menu2.sh - Menú de instalación
+#!/bin/bash
+echo 'Menu de Instalación'
+echo '-----------------------------------------'
+echo '1- Instalación del servidor LAMP'
+echo '2- Instalación de Docker y Docker-compose'
+echo '3- Instalación de Mysql/MariaDB'
+echo '4- Salir'
+echo '-----------------------------------------'
+echo '¿Qué desea realizar?'
+read res
+
+case $res in
+"1") echo 'Instalando el servidor LAMP'
+        #Instalacion de herramientas y servidor apache
+        sudo yum install net-tools
+        sudo yum install openssh-server
+        sudo yum install httpd
+        sudo yum install wget
+        wget 127.0.0.1
+        systemctl start httpd
+        echo "Estado de Apache"
+        systemctl status httpd
+        ;;
+"2") echo 'Instalando Docker'
+        #Instalacion de Docker
+        yum install -y yum-utils device-mapper-persistent-data lvm2
+        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        yum install docker-ce
+        systemctl enable docker
+        systemctl start docker
+        echo "Estado de Docker:"
+        systemctl status docker
+        curl -L "https://github.com/docker/compose/releases/download/1.23.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        yum install curl
+        chmod +x /usr/local/bin/docker-compose
+        echo "La versión de Docekr-compose es: "
+        docker-compose --version
+        ;;
+"3") echo 'Instalando Mysql/MariaDB'
+        #Instalacion de MySQL y demonios
+        sudo yum install mariadb-server
+        sudo systemctl start mariadb
+        echo "Estado de MariaDB:"
+        sudo systemctl status mariadb
+        sudo systemctl enable mariadb
+        sudo mysql_secure_installation
+        echo "Versión de mariaDB:"
+        mysqladmin -u root -p version
+        ;;
+"4") echo "saliendo"
+        exit
+        ;;
+esac
+      
+menu3.sh - Menú de administrador
+#!/bin/bash
+echo '----------------------------------------'
+echo '-1- Apagar la máquina virtual           '
+echo '-2- Reiniciar MySQL                     '
+echo '-3- Reiniciar Apache                    '
+echo '-4- Reiniciar ambos                     '
+echo '-5- Abrir puerto                        '
+echo '-6- Crear usuario de la base de datos   '
+echo '-7- Crear usuario del sistema           '
+echo '-8- Copia manual de MySQL               '
+echo '-9- Recuperación del respaldo           '
+echo '-10- Salir                              '
+echo '----------------------------------------'
+echo '¿Qué desea realizar?'
+read res
+
+case $res in
+   "1") echo 'Apagando CentOS'
+        shutdown 0
+        ;;
+   "2") echo 'Reiniciando mariadb'
+        systemctl restart mariadb
+        echo 'Estado mariadb: '
+        systemctl status mariadb
+        ;;
+   "3") echo 'Reiniciando apache'
+        systemctl restart apache
+        echo 'Estado apache: '
+        systemctl status apache
+        ;;
+   "4") echo 'Reiniciando mariadb y apache'
+        systemctl restart mariadb
+        systemctl restart apache
+        echo 'Estado de Mariadb y Apache'
+        systemctl status mariadb
+        systemctl status apache
+        ;;
+ "5") echo 'Inserte el puerto que desea abrir (Mysql:3306,Apache:80): '
+        read puerto
+        #puerto seguro
+        firewall-cmd --zone=public --add-port="$puerto"/tcp --permanent
+        firewall-cmd --reload
+        ;;
+   "6") echo 'Nombre del nuevo usuario'
+        read usuarionuevo
+        #agrega usuario
+        useradd $usuarionuevo
+        echo 'Contraseña del nuevo usuario'
+        #contraseá para el usuario
+        passwd $usuarionuevo
+        ;;
+   "7") read -p "A que base de Datos se agregara el usuaio?" db
+        #usa la base de datos deseada
+        mysql -Bse "USE $db" 2> /dev/null
+        if [ $? -eq 0 ]; then
+        read -p "Nombre del nuevo usuario: " nuevousuario
+        read -p "Desde donde se conectará el usuario?" host
+        read -p "Contraseña para el nuevo usuario: ($nuevousuario) : " password
+        pri="Dando todos los privilegios a $db.* en $nuevousuario@'$host' contraseña: '$password'";
+        read -p "$pri , Confirmar (s/n) : " confirm
+        if [ "$confirm" == 's' ]; then
+        mysql -e "$pri"
+        mysql -e "Privilegios que el usuario no va a tener"
+        else
+        read -p "Presione cualquier tecla para salir"
+        fi
+        else
+        echo "La base de datos: $db no existe, por favor repetir.";
+        fi
+        ;;
+        "8") "Respaldando MySQL"
+        service mysql stop
+        #copia de la base de datos a respaldosmysql
+        rsync -a /var/lib/mysql /respaldosmysql
+        #copia de datos de LarmSoftwareDesign a res(fecha).sql
+        mysqldump -u lgarcia -p53055412 --opt LarmSoftwareDesign > respaldos/res$fecha.sql
+        service mysql start
+        ;;
+        "9") "Recuperando MySQL"
+        service mysql stop
+        #borra recursivamente los datos de MyQSL
+        rm -rf /var/lib/mysql
+        #copia el respaldo a /var/lib
+        rsync -a /respaldosmysql/mysql /var/lib
+        service mysql start
+        ;;
+        "10") "Saliendo"
+        exit
+        ;;
+        "*")
+        echo "Opcion incorrecta"
+        ;;
+esac
+
+menu4.sh - Menú de logs
+#!/bin/bash
+echo 'Menu de Logs'
+echo '------------------------------------------------------------'
+echo '1- Ver los últimos ingresos'
+echo '2- Ver los últimos registros de autenticación'
+echo '3- Ver los últimos registros de autenticación en tiempo real'
+echo '4- Salir'
+echo '------------------------------------------------------------'
+echo '¿Qué desea realizar?'
+read res
+echo "$res"
+
+case $res in
+"1") #Comando de registros últimos 10
+     last -n 10
+     ;;
+"2") #Comando de autentificación
+        tail /var/log/secure
+        ;;
+"3") #Comando de autentificación en tiempo real
+        tail -f /var/log/secure
+        ;;
+"4") echo 'Saliendo'
+        exit
+        ;;
+esac
